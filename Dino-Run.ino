@@ -10,7 +10,9 @@
 #define C   A2
 #define D   A3
 
-// Initialise before program
+/*
+ * GLOBALS REQUIRED FOR SPRITECLASS
+ */
 static const uint8_t PROGMEM sDino[][30] = {
 {0x01,0xf0 // run frame 1
 ,0x03,0x78
@@ -126,7 +128,9 @@ static const uint8_t PROGMEM sBird[][16] = {
 };
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, false);
 
-// Classes
+/*
+ * SPRITE CLASS AND FUNCTIONS
+ */
 class Sprite{
   int posX, posY, rectWidth, rectHeight, pR, pC, frame, cSprite;
   char sprite, state;
@@ -144,13 +148,8 @@ class Sprite{
   int getBottom();
   int getTop();
   
-  };
-  
-class Game{
-  
-  };
+};
 
-// Functions
 Sprite::Sprite(int positionX, int positionY, int width, int height, char num){
   posX = positionX;
   posY = positionY;
@@ -293,6 +292,9 @@ int Sprite::getTop(){
   
   };
 
+/*
+ * GLOBALS FOR THE GAME CLASS
+ */
 int i = 0;
 long tock = 0;
 Sprite dino(15,15,13,15,'d');
@@ -307,7 +309,16 @@ bool tick(){
   return false;
 }
 
-void test(){
+void gameUpdate(){
+  
+  
+  }
+
+
+/*
+ * TEST CODE FOR DISPLAY SPRITES
+ */
+void spriteTest(){
     if (tick()){
       i++;
       if(i == 33){
@@ -328,9 +339,9 @@ void test(){
   }
 
 void setup() {
-  matrix.begin();
+    matrix.begin();
 }
 
 void loop() {
-    test();
+    spriteTest();
 }
