@@ -293,33 +293,68 @@ int Sprite::getTop(){
   };
 
 /*
- * GLOBALS FOR THE GAME CLASS
+ * GLOBALS FOR THE GAME & TEST FUNCTIONS
  */
 int i = 0;
 long tock = 0;
-Sprite dino(15,15,13,15,'d');
-Sprite cact(10,10,5,8,'c');
-Sprite birb(0,0,11,8,'b');
+Sprite dino(-20,-20,13,15,'d');
+Sprite cact(-20,-20,5,8,'c');
+Sprite birb(-20,-20,11,8,'b');
+
+class Game{
+    int gSpeed, score, screenRate;
+    bool isJumping, isDucking; 
+
+    public:
+    Game(int);
+    displayAll();
+    displayScore(int, int);
+    animateSprites();
+    reset();
+    bool tick();
   
-bool tick(){
+  };
+  
+bool Game::tick(){
   if (millis() > tock * 33){
     tock++;
     return true;
   }
   return false;
-}
+};
 
-void gameUpdate(){
-  
-  
+Game::animateSprites(){
+    if (millis() > tock * 33){
+      tock++;
+      i++;
+      if(i == 33){
+        dino.changeState('b');
+        }
+      if(i == 66){
+        dino.changeState('c');
+        }
+      if(i == 99){
+        dino.changeState('a');
+        i = 0;
+        }
+  }
+};
+
+Game::displayAll(){
+  animateSprites();
+  matrix.fillScreen(matrix.Color333(0,0,0));
+  birb.spriteDisplay();
+  dino.spriteDisplay();
+  cact.spriteDisplay();
   }
 
-
 /*
- * TEST CODE FOR DISPLAY SPRITES
+ * TEST CODE FOR DISPLAYING SPRITES
+ * Do not use this with the game class, they use the same variables.
  */
 void spriteTest(){
-    if (tick()){
+    if (millis() > tock * 33){
+      tock++;
       i++;
       if(i == 33){
         dino.changeState('b');
@@ -332,11 +367,11 @@ void spriteTest(){
         i = 0;
         }
       matrix.fillScreen(matrix.Color333(0,0,0));
-      birb.spriteDisplay();
       dino.spriteDisplay();
       cact.spriteDisplay();
-    }
-  }
+      birb.spriteDisplay();
+      }
+}
 
 void setup() {
     matrix.begin();
