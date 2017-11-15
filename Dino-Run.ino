@@ -297,24 +297,40 @@ int Sprite::getTop(){
  */
 int i = 0;
 long tock = 0;
-Sprite dino(-20,-20,13,15,'d');
-Sprite cact(-20,-20,5,8,'c');
-Sprite birb(-20,-20,11,8,'b');
+Sprite dino(0,0,13,15,'d');
+Sprite cact(13,0,5,8,'c');
+Sprite birb(18,0,11,8,'b');
 
 class Game{
-    int gSpeed, score, screenRate;
-    bool isJumping, isDucking; 
+    int gSpeed, score, screenRate, highScore;
+    bool isJumping, isDucking, button1, button2, button3; 
 
     public:
-    Game(int);
-    displayAll();
-    displayScore(int, int);
-    animateSprites();
-    reset();
-    bool tick();
+      Game();
+      gameUpdate();
+      displayAll();
+      displayScore(int, int);
+      checkInputs();
+      reset();
+      bool tick();
   
   };
+
+Game::Game(){
+    gSpeed = 33;
+    score = 0;
+    highScore = 0;
+    isJumping = false;
+    isDucking = false;
+    button1 = false;
+    button2 = false;
+    button3 = false;
+  };
+
+Game::checkInputs(){
   
+  };
+
 bool Game::tick(){
   if (millis() > tock * 33){
     tock++;
@@ -323,9 +339,16 @@ bool Game::tick(){
   return false;
 };
 
-Game::animateSprites(){
-    if (millis() > tock * 33){
-      tock++;
+Game::gameUpdate(){
+  if(tick()){
+    displayAll();
+    }
+  };
+
+
+Game::displayAll(){
+  //animate
+   if (millis() > tock * 33){
       i++;
       if(i == 33){
         dino.changeState('b');
@@ -338,15 +361,15 @@ Game::animateSprites(){
         i = 0;
         }
   }
-};
 
-Game::displayAll(){
-  animateSprites();
+  //display
   matrix.fillScreen(matrix.Color333(0,0,0));
   birb.spriteDisplay();
   dino.spriteDisplay();
   cact.spriteDisplay();
-  }
+};
+
+
 
 /*
  * TEST CODE FOR DISPLAYING SPRITES
@@ -373,10 +396,16 @@ void spriteTest(){
       }
 }
 
+/*
+ * CREATE NEW GAME, SETUP AND RUN A LOOP
+ */
+
+Game *dinorun = new Game();
+
 void setup() {
     matrix.begin();
 }
 
 void loop() {
-    spriteTest();
+    dinorun->gameUpdate();
 }
