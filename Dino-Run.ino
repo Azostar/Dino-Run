@@ -313,22 +313,22 @@ void testSetup(){
 
 void test(){
     if (tick()){
-      i++;
-      if(i == 33){
-        dino->changeState('b');
-        }
-      if(i == 66){
-        dino->changeState('c');
-        }
-      if(i == 99){
-        dino->changeState('a');
-        i = 0;
-        }
-      matrix.fillScreen(matrix.Color333(0,0,0));
-      dino->spriteDisplay();
-      cact->spriteDisplay();
-      birb->spriteDisplay();
+    i++;
+    if(i == 33){
+      dino->changeState('b');
       }
+    if(i == 66){
+      dino->changeState('c');
+      }
+    if(i == 99){
+      dino->changeState('a');
+      i = 0;
+      }
+    matrix.fillScreen(matrix.Color333(0,0,0));
+    dino->spriteDisplay();
+    cact->spriteDisplay();
+    birb->spriteDisplay();
+  }
   }
 
 void setup() {
