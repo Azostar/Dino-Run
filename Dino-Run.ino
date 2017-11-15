@@ -127,7 +127,7 @@ static const uint8_t PROGMEM sBird[][16] = {
 ,0x06,0x00
 ,0x02,0x00}
 };
-RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, false);
+RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, true);
 
 /*
  * SPRITE CLASS AND FUNCTIONS
@@ -381,6 +381,7 @@ Game::displayAll(){
   birb.spriteDisplay();
   dino.spriteDisplay();
   cact.spriteDisplay();
+  matrix.swapBuffers(false);
 };
 
 
