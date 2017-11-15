@@ -1,5 +1,6 @@
 #include <Adafruit_GFX.h>   // Core graphics library
 #include <RGBmatrixPanel.h> // Hardware-specific library
+#include <Arduino.h>
 
 #define CLK 8
 #define OE  9
@@ -144,6 +145,7 @@ class Sprite{
   int getTop();
   
   };
+  
 class Game{
   
   };
@@ -161,7 +163,7 @@ Sprite::Sprite(int positionX, int positionY, int width, int height, char num){
   state = 'a';
   flip = false;
   
-  }
+  };
 
 Sprite::spriteDisplay(){
   if(sprite == 'd'){
@@ -173,18 +175,18 @@ Sprite::spriteDisplay(){
   if(sprite == 'b'){
     matrix.drawBitmap(posX,posY,sBird[spriteAnimate()],rectWidth,rectHeight,255);
     }
-  }
+  };
 
 Sprite::spriteUpdatePos(int x, int y){
   posX = x;
   posY = y;
   
-  }
+  };
 
 Sprite::changeState(char s){
   state = s;
   flip = true;
-  }
+  };
 
 bool Sprite::frameUpdate(){
     frame = frame + 1;
@@ -192,10 +194,10 @@ bool Sprite::frameUpdate(){
     if(frame == 8){
       frame = 0;
       return true;
-    }
+    };
     
     return false;
-  }
+  };
 
 int Sprite::spriteAnimate(){
     // check for any state updates
@@ -269,32 +271,33 @@ int Sprite::spriteAnimate(){
     }
     
     return cSprite;
-  }
+  };
 
 int Sprite::getLeft(){
   return posX;
   
-  }
+  };
 
 int Sprite::getRight(){
   return posX + rectWidth;
   
-  }
+  };
 
 int Sprite::getBottom(){
   return posY + rectHeight;
   
-  }
+  };
 
 int Sprite::getTop(){
   return posY;
   
-  }
+  };
 
-// inits
-Sprite *dino,*cact,*birb;
-long tock;
-int i;
+int i = 0;
+long tock = 0;
+Sprite dino(15,15,13,15,'d');
+Sprite cact(10,10,5,8,'c');
+Sprite birb(0,0,11,8,'b');
   
 bool tick(){
   if (millis() > tock * 33){
@@ -304,39 +307,30 @@ bool tick(){
   return false;
 }
 
-void testSetup(){
-  dino = new Sprite(15,15,13,15,'d');
-  cact = new Sprite(10,10,5,8,'c');
-  birb = new Sprite(0,0,11,8,'b');
-  i = 0;
-  }
-
 void test(){
     if (tick()){
       i++;
       if(i == 33){
-        dino->changeState('b');
+        dino.changeState('b');
         }
       if(i == 66){
-        dino->changeState('c');
+        dino.changeState('c');
         }
       if(i == 99){
-        dino->changeState('a');
+        dino.changeState('a');
         i = 0;
         }
       matrix.fillScreen(matrix.Color333(0,0,0));
-      dino->spriteDisplay();
-      cact->spriteDisplay();
-      birb->spriteDisplay();
-      }
+      birb.spriteDisplay();
+      dino.spriteDisplay();
+      cact.spriteDisplay();
+    }
   }
 
 void setup() {
   matrix.begin();
-  testSetup();
-  tock = 1;
 }
 
 void loop() {
-  test();
+    test();
 }
