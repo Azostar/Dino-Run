@@ -2,13 +2,14 @@
 #include <RGBmatrixPanel.h> // Hardware-specific library
 #include <Arduino.h>
 
-#define CLK 8
-#define OE  9
-#define LAT 10
-#define A   A0
-#define B   A1
-#define C   A2
-#define D   A3
+#define CLK   11
+#define OE    9
+#define LAT   10
+#define A     A0
+#define B     A1
+#define C     A2
+#define D     A3
+#define JMP   12
 
 /*
  * GLOBALS REQUIRED FOR SPRITECLASS
@@ -140,8 +141,9 @@ class Sprite{
   Sprite(int,int,int,int,char);
   spriteUpdatePos(int,int);
   spriteDisplay();
-  changeState(char);
+  setState(char);
   bool frameUpdate();
+  char getState();
   int spriteAnimate();
   int getLeft();
   int getRight();
@@ -182,7 +184,7 @@ Sprite::spriteUpdatePos(int x, int y){
   
   };
 
-Sprite::changeState(char s){
+Sprite::setState(char s){
   state = s;
   flip = true;
   };
@@ -197,6 +199,10 @@ bool Sprite::frameUpdate(){
     
     return false;
   };
+
+char Sprite::getState(){
+  return state;
+  }
 
 int Sprite::spriteAnimate(){
     // check for any state updates
@@ -302,8 +308,8 @@ Sprite cact(13,0,5,8,'c');
 Sprite birb(18,0,11,8,'b');
 
 class Game{
-    int gSpeed, score, screenRate, highScore;
-    bool isJumping, isDucking, button1, button2, button3; 
+    int gSpeed, score, screenRate, highScore, height;
+    bool isJumping, isDucking;
 
     public:
       Game();
@@ -311,6 +317,8 @@ class Game{
       displayAll();
       displayScore(int, int);
       checkInputs();
+      jump();
+      bool checkCollision();
       reset();
       bool tick();
   
@@ -322,13 +330,12 @@ Game::Game(){
     highScore = 0;
     isJumping = false;
     isDucking = false;
-    button1 = false;
-    button2 = false;
-    button3 = false;
   };
 
 Game::checkInputs(){
-  
+  if(digitalRead(JMP) == 1 && isJumping == false){
+      jump();
+    }
   };
 
 bool Game::tick(){
@@ -341,27 +348,34 @@ bool Game::tick(){
 
 Game::gameUpdate(){
   if(tick()){
+    if(isJumping == true){
+      height++;
+      
+      if(height > 100){
+        height = 0;
+        isJumping = false;
+        }
+      }
+      
     displayAll();
     }
   };
 
+Game::jump(){
+    isJumping = true;
+  }
+
 
 Game::displayAll(){
   //animate
-   if (millis() > tock * 33){
-      i++;
-      if(i == 33){
-        dino.changeState('b');
-        }
-      if(i == 66){
-        dino.changeState('c');
-        }
-      if(i == 99){
-        dino.changeState('a');
-        i = 0;
-        }
-  }
-
+  if(isJumping == true && dino.getState() != 'c'){
+      dino.setState('c');
+      }
+      
+  if(isJumping == false && dino.getState() != 'a'){
+      dino.setState('a');
+      }
+  
   //display
   matrix.fillScreen(matrix.Color333(0,0,0));
   birb.spriteDisplay();
@@ -380,13 +394,13 @@ void spriteTest(){
       tock++;
       i++;
       if(i == 33){
-        dino.changeState('b');
+        dino.setState('b');
         }
       if(i == 66){
-        dino.changeState('c');
+        dino.setState('c');
         }
       if(i == 99){
-        dino.changeState('a');
+        dino.setState('a');
         i = 0;
         }
       matrix.fillScreen(matrix.Color333(0,0,0));
@@ -400,12 +414,14 @@ void spriteTest(){
  * CREATE NEW GAME, SETUP AND RUN A LOOP
  */
 
-Game *dinorun = new Game();
+Game dinorun;
 
 void setup() {
     matrix.begin();
+    pinMode(JMP, INPUT);
 }
 
 void loop() {
-    dinorun->gameUpdate();
+  dinorun.checkInputs();
+  dinorun.gameUpdate();
 }
