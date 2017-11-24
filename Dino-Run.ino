@@ -1,6 +1,6 @@
-#include <Adafruit_GFX.h>   // Core graphics library
-#include <RGBmatrixPanel.h> // Hardware-specific library
-#include <Arduino.h>
+#include <Adafruit_GFX.h>   // LED matrix-specific library
+#include <RGBmatrixPanel.h> // LED matrix-specific library
+#include <Arduino.h>        // Arduino libraries
 
 #define CLK   11
 #define OE    9
@@ -10,9 +10,11 @@
 #define C     A2
 #define D     A3
 #define JMP   12
+#define DCK   13
 
 /*
  * GLOBALS REQUIRED FOR SPRITECLASS
+ * uint8_t arrays define the characteristics of each sprite.
  */
 static const uint8_t PROGMEM sDino[][30] = {
 {0x01,0xf0 // run frame 1
@@ -127,6 +129,7 @@ static const uint8_t PROGMEM sBird[][16] = {
 ,0x06,0x00
 ,0x02,0x00}
 };
+// Initialise the LED matrix
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, true);
 
 /*
@@ -138,17 +141,19 @@ class Sprite{
   bool flip;
 
   public:
-  Sprite(int,int,int,int,char);
-  spriteUpdatePos(int,int);
-  spriteDisplay();
-  setState(char);
-  bool frameUpdate();
-  char getState();
-  int spriteAnimate();
-  int getLeft();
-  int getRight();
-  int getBottom();
-  int getTop();
+      Sprite(int,int,int,int,char);   // constructor for the sprite class
+      spriteUpdatePos(int,int);       // positional update for the sprites location
+      spriteDisplay();                // method to display sprites on the LED matrix
+      setState(char);                 // state characteristics for each sprite
+      char getState();                // get current state of sprite
+      int getLeft();                  // get the left side of the sprite
+      int getRight();                 // get the right side of the sprite
+      int getBottom();                // get the bottom side of the sprite
+      int getTop();                   // get the top side of the sprite
+
+  private:
+      bool frameUpdate();             // frame check for sprite animations
+      int spriteAnimate();            // returns the frame that the sprite should be on, used in sprite display
   
 };
 
@@ -159,14 +164,15 @@ Sprite::Sprite(int positionX, int positionY, int width, int height, char num){
   rectHeight = height;
   pC = 0;
   pR = 0;
-  sprite = num;
-  cSprite = 0;
-  state = 'a';
-  flip = false;
+  sprite = num;           // used for determining which sprite to display
+  cSprite = 0;            // used for checking frames
+  state = 'a';            // used for checking the current state, used only for the dinosuar
+  flip = false;           // used for updating the sprite relative to the current sprite when there is a state change
   
   };
 
 Sprite::spriteDisplay(){
+  // check what the sprite is, and then draw the sprite on the matrix accordingly
   if(sprite == 'd'){
     matrix.drawBitmap(posX,posY,sDino[spriteAnimate()],rectWidth,rectHeight,255);
     }
@@ -190,6 +196,8 @@ Sprite::setState(char s){
   };
 
 bool Sprite::frameUpdate(){
+    // increment the frame value, when this function is called and this is the 8th frame, return true and update the sprite
+    // doesn't have to be 8, can decrease if you want slower animation
     frame = frame + 1;
     
     if(frame == 8){
@@ -206,7 +214,8 @@ char Sprite::getState(){
 
 int Sprite::spriteAnimate(){
     // check for any state updates
-  
+
+     // instant updates for the dinosuar sprites, depending on what input is pressed. Changes based on the current state.
      if(sprite == 'd'){   
         if(flip == true){
           if(cSprite == 0){
@@ -230,11 +239,13 @@ int Sprite::spriteAnimate(){
           }
      }
 
-    // check auto frame updates
+    // check if a frame update is required
     if(frameUpdate()){
-          
+
+      // check which sprite this object contains
       if(sprite == 'd'){
-        
+
+        // check states, and update the sprite accordingly
         if(state == 'a'){
           if(cSprite != 0){
             cSprite = 0;
@@ -257,6 +268,7 @@ int Sprite::spriteAnimate(){
       
       }
 
+      // if the sprite is a birb, do birb stuff, flip is re-used to make use of a redundant variable otherwise.
       if(sprite == 'b'){
         if(cSprite == 2){
           flip = true;
@@ -274,7 +286,8 @@ int Sprite::spriteAnimate(){
           
       }
     }
-    
+
+    // return what the sprite is supposed to be.
     return cSprite;
   };
 
@@ -301,82 +314,96 @@ int Sprite::getTop(){
 /*
  * GLOBALS FOR THE GAME & TEST FUNCTIONS
  */
-int i = 0;
-long tock = 0;
-Sprite dino(0,0,13,15,'d');
-Sprite cact(13,0,5,8,'c');
-Sprite birb(18,0,11,8,'b');
+int i = 0;                    // used for a loop in the test class
+long tock = 0;                // used for timing, game will really mess up when this reaches the end
+Sprite dino(0,0,13,15,'d');   // create a dinosuar sprite
+Sprite cact(13,0,5,8,'c');    // create a cactus sprite
+Sprite birb(18,0,11,8,'b');   // create a birb
 
 class Game{
-    int gSpeed, score, screenRate, highScore, height;
-    bool isJumping, isDucking;
+    int gSpeed, score, screenRate, highScore, height;   // game variables
+    int dBottomHit[2], dTopHit[2], bHit[2], cHit[2];    // Int arrays for hitboxes
+    bool isJumping, isDucking;                          // state check for dinosuar.
 
     public:
-      Game();
-      gameUpdate();
-      displayAll();
-      displayScore(int, int);
-      checkInputs();
-      jump();
-      bool checkCollision();
-      reset();
-      bool tick();
+      Game();           // game constructor
+      gameUpdate();     // update the game
+      checkInputs();    // check what the current inputs are
+
+    private:
+      displayAll();             // display all the sprites on the matrix
+      displayScore(int, int);   // display the current score on the matrix
+      updateHitboxes();         // update the position of all hitboxes
+      setDinoState();           // set the state of the dinosuar
+      moveSprites();            // move the sprites on the screen
+      jump();                   // jump the dinosuar
+      duck();                   // duck the dinosuar
+      bool checkCollision();    // check for any collisions
+      reset();                  // reset the game
+      bool tick();              // virtual timing for the game
   
   };
 
 Game::Game(){
-    gSpeed = 33;
-    score = 0;
-    highScore = 0;
+    gSpeed = 33;            // set the game speed, how many seconds before a game update
+    score = 0;              // score is 0 when the game starts
+    highScore = 0;          // hi-score is also 0, do not reset or you'll lose your stuff!
     isJumping = false;
     isDucking = false;
+    
   };
 
 Game::checkInputs(){
-  if(digitalRead(JMP) == 1 && isJumping == false){
+  // if the dinosuar is jumping, do nothing.
+  if(isJumping == false){
+    // if the jump button is pressed, jump takes priority
+    if(digitalRead(JMP) == 1){
       jump();
+      }
+    if(digitalRead(DCK) == 1){
+      duck();
+      }
     }
-  };
+};
 
 bool Game::tick(){
-  if (millis() > tock * 33){
+  if (millis() > tock * gSpeed){
     tock++;
     return true;
   }
   return false;
-};
+  };
 
 Game::gameUpdate(){
   if(tick()){
-    if(isJumping == true){
-      height++;
-      
-      if(height > 100){
-        height = 0;
-        isJumping = false;
-        }
-      }
-      
+    setDinoState();
     displayAll();
     }
-  };
+} ;
 
 Game::jump(){
     isJumping = true;
-  }
+  };
 
+Game::duck(){
+    isDucking = true;
+  };
 
-Game::displayAll(){
-  //animate
+Game::setDinoState(){
   if(isJumping == true && dino.getState() != 'c'){
       dino.setState('c');
+      }
+
+  if(isJumping == false && isDucking == true && dino.getState() != 'b'){
+      dino.setState('b');
       }
       
   if(isJumping == false && dino.getState() != 'a'){
       dino.setState('a');
       }
-  
-  //display
+  };
+
+Game::displayAll(){
   matrix.fillScreen(matrix.Color333(0,0,0));
   birb.spriteDisplay();
   dino.spriteDisplay();
@@ -384,14 +411,12 @@ Game::displayAll(){
   matrix.swapBuffers(false);
 };
 
-
-
 /*
  * TEST CODE FOR DISPLAYING SPRITES
  * Do not use this with the game class, they use the same variables.
  */
 void spriteTest(){
-    if (millis() > tock * 33){
+    if (millis() > tock * (1000/30)){
       tock++;
       i++;
       if(i == 33){
@@ -420,6 +445,7 @@ Game dinorun;
 void setup() {
     matrix.begin();
     pinMode(JMP, INPUT);
+    pinMode(DCK, INPUT);
 }
 
 void loop() {
