@@ -150,10 +150,12 @@ class Sprite {
 
   public:
     Sprite(int, int, int, int, char);   // constructor for the sprite class
-    spriteUpdatePos(int, int);          // positional update for the sprites location
+    updatePosition(int, int);           // positional update for the sprites location
     spriteDisplay();                    // method to display sprites on the LED matrix
     setState(char);                     // state characteristics for each sprite
     char getState();                    // get current state of sprite
+    int getHeight();                    // get the height of the sprite 
+    int getWidth();                     // get the width of the sprite
     int getLeft();                      // get the left side of the sprite
     int getRight();                     // get the right side of the sprite
     int getBottom();                    // get the bottom side of the sprite
@@ -192,7 +194,7 @@ Sprite::spriteDisplay() {
   }
 };
 
-Sprite::spriteUpdatePos(int x, int y) {
+Sprite::updatePosition(int x, int y) {
   posX = x;
   posY = y;
 
@@ -300,6 +302,14 @@ int Sprite::spriteAnimate() {
   return cSprite;
 };
 
+int Sprite::getHeight(){
+  return rectHeight;  
+};
+
+int Sprite::getWidth(){
+  return rectWidth;  
+};
+
 int Sprite::getLeft() {
   return posX;
 
@@ -330,9 +340,10 @@ Sprite cact(13, 0, 5, 8, 'c');      // create a cactus sprite
 Sprite birb(18, 0, 11, 8, 'b');     // create a birb
 
 class Game {
-    int gSpeed, score, screenRate, highScore, height;   // game variables
-    int dBottomHit[2], dTopHit[2], bHit[2], cHit[2];    // Int arrays for hitboxes
+    int gSpeed, highScore, jumpHeight, gravity, velocity;   // game variables
+    int dBottomHit[2], dTopHit[2], bHit[2], cHit[2], fHit[2];    // Int arrays for hitboxes
     bool isJumping, isDucking;                          // state check for dinosuar.
+    long score;
 
   public:
     Game();           // game constructor
@@ -341,14 +352,16 @@ class Game {
 
   private:
     displayAll();             // display all the sprites on the matrix
-    displayScore(int, int);   // display the current score on the matrix
-    updateHitboxes();         // update the position of all hitboxes
+    displayScore();           // TODO: display the current score on the matrix
+    updateHitboxes();         // TODO: update the position of all hitboxes
     setDinoState();           // set the state of the dinosuar
-    moveSprites();            // move the sprites on the screen
+    moveSprites();            // TODO: move the sprites on the screen
     jump();                   // jump the dinosuar
     duck();                   // duck the dinosuar
-    bool checkCollision();    // check for any collisions
-    reset();                  // reset the game
+    drawFloor();              // draw the game floor
+    gameOver();               // TODO: finish the game
+    bool checkCollision();    // TODO: check for any collisions
+    reset();                  // TODO: reset the game
     bool tick();              // virtual timing for the game
 
 };
@@ -359,6 +372,11 @@ Game::Game() {
   highScore = 0;          // hi-score is also 0, do not reset or you'll lose your stuff!
   isJumping = false;
   isDucking = false;
+  velocity = 0;
+  jumpHeight = 0;
+  gravity = 2;
+  fHit[0] = 0;            // x pos of floor hitbox
+  fHit[1] = 30;           // y pos of floor hitbox
 
 };
 
@@ -386,19 +404,53 @@ bool Game::tick() {
 Game::gameUpdate() {
   if (tick()) {
     setDinoState();
+    //moveSprites();
+    //updateHitboxes();
+    //checkCollision();
     displayAll();
   }
 } ;
 
 Game::jump() {
   isJumping = true;
+  velocity = 6;
 };
 
 Game::duck() {
   isDucking = true;
 };
 
-Game::setDinoState() {
+Game::drawFloor(){
+  matrix.drawRect(fHit[0], fHit[1], 32, 2, 255);  
+};
+
+Game::moveSprites(){
+  // check if we're jumping
+  if(isJumping == true){
+      // do some magic, should increase act like a wave
+      jumpHeight += (velocity/gravity);
+      velocity = velocity - gravity;
+
+      // if we've landed change the jump to false, and reset the variables
+      if (jumpHeight <= 0){
+        isJumping = false;
+        velocity = 0;
+        jumpHeight = 0;  
+      }
+  }
+
+  // update position based on whether we're jumping, relative to the floor
+  if(isJumping == false){
+    dino.updatePosition(5, fHit[1] - 1 - dino.getHeight());
+  }else{
+    dino.updatePosition(5, fHit[1] - 1 - jumpHeight - dino.getHeight());
+  }
+
+  
+};
+
+Game::setDinoState(){
+  // switch states depending on the players state and the current sprite state
   if (isJumping == true && dino.getState() != 'c') {
     dino.setState('c');
   }
@@ -412,12 +464,17 @@ Game::setDinoState() {
   }
 };
 
+Game::displayScore(){
+  score += (1/gSpeed) * tock; // as we get faster, we get a higher score
+};
+
 Game::displayAll() {
-  matrix.fillScreen(matrix.Color333(0, 0, 0));
-  birb.spriteDisplay();
-  dino.spriteDisplay();
-  cact.spriteDisplay();
-  matrix.swapBuffers(false);
+  matrix.fillScreen(matrix.Color333(0, 0, 0));  // fill the matrix with black
+  birb.spriteDisplay();                         
+  dino.spriteDisplay();                         
+  cact.spriteDisplay();                         
+  drawFloor();                                  
+  matrix.swapBuffers(false);                    // swap the buffers over for that smooth, smooth animation
 };
 
 /*
