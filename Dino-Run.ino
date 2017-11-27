@@ -14,7 +14,7 @@
 
 /*
    GLOBALS REQUIRED FOR SPRITECLASS
-   uint8_t arrays define the characteristics of each sprite.
+   uint8_t arrays define the display characteristics of each sprite.
 */
 static const uint8_t PROGMEM sDino[][30] = {
   { 0x01, 0xf0 // run frame 1
@@ -298,7 +298,7 @@ int Sprite::spriteAnimate() {
     }
   }
 
-  // return what the sprite is supposed to be.
+  // return what the sprite is currently supposed to be.
   return cSprite;
 };
 
@@ -340,9 +340,10 @@ Sprite cact(13, 0, 5, 8, 'c');      // create a cactus sprite
 Sprite birb(18, 0, 11, 8, 'b');     // create a birb
 
 class Game {
-    int gSpeed, highScore, jumpHeight, gravity, velocity;   // game variables
-    int dBottomHit[2], dTopHit[2], bHit[2], cHit[2], fHit[2];    // Int arrays for hitboxes
-    bool isJumping, isDucking;                          // state check for dinosuar.
+    int gSpeed, highScore, jumpHeight, gravity, velocity;         // game variables
+    int dBottomHit[2], dTopHit[3], bHit[2], cHit[2], fHit[2];     // Int arrays for hitboxes, because everything is traveling horizontally, we should only need two sides EXCEPT
+                                                                  //   for the top half of the dinosuar, other sides will not come into collision.
+    bool isJumping, isDucking;                                    // state check for dinosuar.
     long score;
 
   public:
@@ -355,7 +356,7 @@ class Game {
     displayScore();           // TODO: display the current score on the matrix
     updateHitboxes();         // TODO: update the position of all hitboxes
     setDinoState();           // set the state of the dinosuar
-    moveSprites();            // TODO: move the sprites on the screen
+    moveSprites();            // TODO: test
     jump();                   // jump the dinosuar
     duck();                   // duck the dinosuar
     drawFloor();              // draw the game floor
@@ -392,6 +393,40 @@ Game::checkInputs() {
     }
   }
 };
+
+Game::updateHitboxes(){
+  // The player will only be able to interact with the left and bottom of the birb
+  bHit[0] = birb.getLeft();
+  bHit[1] = birb.getBottom();
+
+  // The player will only be able to interact with the left and top of the cactus
+  cHit[0] = cact.getLeft();
+  cHit[1] = cact.getTop();
+
+  /* 
+   *  The right side of the dinosinosuar will be the only collision, but we need to factor in the legs of the dino, which is a seperate hitbox smaller than the body.
+   *  We also have to take into account whether the player is ducking, because the top hitbox will be smaller to avoid the birbs.
+   *  Same with jumping, the bottom of the dinosuar is elevated by one pixel in the jumping animation.
+   */
+  dTopHit[0] = dino.getRight();
+  
+  if (isDucking){                       // If the dinosuar is ducking, we want to change the height of the hitbox.
+    dTopHit[1] = dino.getTop() + 3;     // Dinosuar ducks by 3 pixels, we add 3 because y moves downwards
+  }else{
+    dTopHit[1] = dino.getTop();  
+  }
+  
+  dTopHit[2] = dino.getBottom() - 3;    // The bottom of the top half of the dinosuar COULD come into collision with the cactus, so we account for this.
+  
+  dBottomHit[0] = dino.getRight() - 6;      // The legs are six pixels behind the front of the body.
+  
+  if (isJumping){
+    dBottomHit[1] = dino.getBottom() - 1;   // When jumping the bottom of the dino is elevated by 1, so we need to account for this.
+  }else{
+    dBottomHit[1] = dino.getBottom();  
+  }
+  
+}
 
 bool Game::tick() {
   if (millis() > tock * gSpeed) {
