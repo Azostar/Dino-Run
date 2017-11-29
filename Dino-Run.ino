@@ -203,6 +203,7 @@ Sprite::updatePosition(int x, int y) {
 Sprite::setState(char s) {
   state = s;
   flip = true;
+  spriteAnimate();
 };
 
 bool Sprite::frameUpdate() {
@@ -340,11 +341,11 @@ Sprite cact(13, 0, 5, 8, 'c');      // create a cactus sprite
 Sprite birb(18, 0, 11, 8, 'b');     // create a birb
 
 class Game {
-    int gSpeed, highScore, jumpHeight, gravity, velocity;         // game variables
-    int dBottomHit[2], dTopHit[3], bHit[2], cHit[2], fHit[2];     // Int arrays for hitboxes, because everything is traveling horizontally, we should only need two sides EXCEPT
-                                                                  //   for the top half of the dinosuar, other sides will not come into collision.
+    int gSpeed, highScore, jumpHeight, jumpFrame, jumpDirection;  // game variables
+    int dHit[6], bHit[3], cHit[3], fHit[2];                       // Int arrays for hitboxes, because everything is traveling horizontally, we should only need three sides EXCEPT
+                                                                  //   for the dinosuar, which has multiple sides.
     bool isJumping, isDucking;                                    // state check for dinosuar.
-    long score;
+    long score, randDelay, randEnemy;
 
   public:
     Game();           // game constructor
@@ -364,6 +365,7 @@ class Game {
     bool checkCollision();    // TODO: check for any collisions
     reset();                  // TODO: reset the game
     bool tick();              // virtual timing for the game
+    hitboxDisplay();          // Displays hitboxes for testing purposes.
 
 };
 
@@ -373,11 +375,13 @@ Game::Game() {
   highScore = 0;          // hi-score is also 0, do not reset or you'll lose your stuff!
   isJumping = false;
   isDucking = false;
-  velocity = 0;
+  jumpDirection = false;
   jumpHeight = 0;
-  gravity = 2;
   fHit[0] = 0;            // x pos of floor hitbox
   fHit[1] = 30;           // y pos of floor hitbox
+  jumpFrame = -14;
+  randDelay = random(100);
+  randEnemy = random(1);
 
 };
 
@@ -390,41 +394,46 @@ Game::checkInputs() {
     }
     if (digitalRead(DCK) == 1) {
       duck();
+    }else if(isDucking != false){
+      isDucking = false;
     }
   }
 };
 
 Game::updateHitboxes(){
   // The player will only be able to interact with the left and bottom of the birb
-  bHit[0] = birb.getLeft();
-  bHit[1] = birb.getBottom();
+  bHit[0] = birb.getRight() - 3;
+  bHit[1] = birb.getBottom() - 3;
+  bHit[2] = birb.getLeft();
 
   // The player will only be able to interact with the left and top of the cactus
-  cHit[0] = cact.getLeft();
-  cHit[1] = cact.getTop();
+  cHit[0] = cact.getTop();
+  cHit[1] = cact.getRight() - 1;
+  cHit[2] = cact.getLeft();
 
   /* 
    *  The right side of the dinosinosuar will be the only collision, but we need to factor in the legs of the dino, which is a seperate hitbox smaller than the body.
    *  We also have to take into account whether the player is ducking, because the top hitbox will be smaller to avoid the birbs.
    *  Same with jumping, the bottom of the dinosuar is elevated by one pixel in the jumping animation.
    */
-  dTopHit[0] = dino.getRight();
   
-  if (isDucking){                       // If the dinosuar is ducking, we want to change the height of the hitbox.
-    dTopHit[1] = dino.getTop() + 3;     // Dinosuar ducks by 3 pixels, we add 3 because y moves downwards
+  if (isDucking && !isJumping){                       // If the dinosuar is ducking, we want to change the height of the hitbox.
+    dHit[0] = dino.getTop() + 3;     // Dinosuar ducks by 3 pixels, we add 3 because y moves downwards
   }else{
-    dTopHit[1] = dino.getTop();  
+    dHit[0] = dino.getTop();  
   }
-  
-  dTopHit[2] = dino.getBottom() - 3;    // The bottom of the top half of the dinosuar COULD come into collision with the cactus, so we account for this.
-  
-  dBottomHit[0] = dino.getRight() - 6;      // The legs are six pixels behind the front of the body.
+
+  dHit[1] = dino.getRight() - 1;
+  dHit[2] = dHit[0] + 5;    // The bottom of the top half of the dinosuar COULD come into collision with the cactus, so we account for this.
+  dHit[3] = dHit[1] - 5;
   
   if (isJumping){
-    dBottomHit[1] = dino.getBottom() - 1;   // When jumping the bottom of the dino is elevated by 1, so we need to account for this.
+    dHit[4] = dino.getBottom() - 2;   // When jumping the bottom of the dino is elevated by 1, so we need to account for this.
   }else{
-    dBottomHit[1] = dino.getBottom();  
+    dHit[4] = dino.getBottom()-1;  
   }
+
+  dHit[5] = dino.getLeft() + 2;
   
 }
 
@@ -439,8 +448,8 @@ bool Game::tick() {
 Game::gameUpdate() {
   if (tick()) {
     setDinoState();
-    //moveSprites();
-    //updateHitboxes();
+    moveSprites();
+    updateHitboxes();
     //checkCollision();
     displayAll();
   }
@@ -448,7 +457,6 @@ Game::gameUpdate() {
 
 Game::jump() {
   isJumping = true;
-  velocity = 6;
 };
 
 Game::duck() {
@@ -462,23 +470,32 @@ Game::drawFloor(){
 Game::moveSprites(){
   // check if we're jumping
   if(isJumping == true){
-      // do some magic, should increase act like a wave
-      jumpHeight += (velocity/gravity);
-      velocity = velocity - gravity;
+      // do some magic, should be a smooth jump
+      if(jumpDirection == false){
+        jumpHeight = ((jumpFrame*jumpFrame*jumpFrame)/400)+8;
+      }else{
+        jumpHeight = ((jumpFrame*jumpFrame*jumpFrame)/-400)+8;
+      }
+      jumpFrame++;
+
+      if(jumpHeight >= 8){
+        jumpDirection = true;
+      }
 
       // if we've landed change the jump to false, and reset the variables
-      if (jumpHeight <= 0){
+      if (jumpHeight < 0){
         isJumping = false;
-        velocity = 0;
-        jumpHeight = 0;  
+        jumpHeight = 0;
+        jumpDirection = false;
+        jumpFrame = -14;  
       }
   }
 
   // update position based on whether we're jumping, relative to the floor
   if(isJumping == false){
-    dino.updatePosition(5, fHit[1] - 1 - dino.getHeight());
+    dino.updatePosition(2, fHit[1] - dino.getHeight());
   }else{
-    dino.updatePosition(5, fHit[1] - 1 - jumpHeight - dino.getHeight());
+    dino.updatePosition(2, fHit[1] - jumpHeight - dino.getHeight());
   }
 
   
@@ -486,6 +503,7 @@ Game::moveSprites(){
 
 Game::setDinoState(){
   // switch states depending on the players state and the current sprite state
+  char state = dino.getState();
   if (isJumping == true && dino.getState() != 'c') {
     dino.setState('c');
   }
@@ -494,20 +512,38 @@ Game::setDinoState(){
     dino.setState('b');
   }
 
-  if (isJumping == false && dino.getState() != 'a') {
+  if (isJumping == false && isDucking == false && dino.getState() != 'a') {
     dino.setState('a');
   }
 };
 
 Game::displayScore(){
-  score += (1/gSpeed) * tock; // as we get faster, we get a higher score
+  score = millis()/100;
 };
+
+Game::hitboxDisplay(){
+  // dinosuar hitbox
+  matrix.drawLine(dHit[3], dHit[0], dHit[1], dHit[0], matrix.Color333(3,1,0));
+  matrix.drawLine(dHit[1], dHit[0], dHit[1], dHit[2], matrix.Color333(3,1,0));
+  matrix.drawLine(dHit[1], dHit[2], dHit[3], dHit[2], matrix.Color333(3,1,0));
+  matrix.drawLine(dHit[3], dHit[2], dHit[3], dHit[4], matrix.Color333(3,1,0));
+  matrix.drawLine(dHit[3], dHit[4], dHit[5], dHit[4], matrix.Color333(3,1,0));
+
+  // cactus hitbox
+  matrix.drawLine(cHit[1], cHit[0], cHit[2], cHit[0], matrix.Color333(3,1,0));
+
+  // birb hitbox
+  matrix.drawLine(bHit[0], bHit[1], bHit[2], bHit[1], matrix.Color333(3,1,0));
+}
 
 Game::displayAll() {
   matrix.fillScreen(matrix.Color333(0, 0, 0));  // fill the matrix with black
   birb.spriteDisplay();                         
   dino.spriteDisplay();                         
-  cact.spriteDisplay();                         
+  cact.spriteDisplay();
+
+  hitboxDisplay();
+                        
   drawFloor();                                  
   matrix.swapBuffers(false);                    // swap the buffers over for that smooth, smooth animation
 };
