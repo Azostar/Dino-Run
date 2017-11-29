@@ -337,14 +337,15 @@ int Sprite::getTop() {
 int i = 0;                          // used for a loop in the test class
 long tock = 0;                      // used for timing, game will really mess up when this reaches the end
 Sprite dino(0, 0, 13, 15, 'd');     // create a dinosuar sprite
-Sprite cact(13, 0, 5, 8, 'c');      // create a cactus sprite
-Sprite birb(18, 0, 11, 8, 'b');     // create a birb
+Sprite cact(33, 33, 5, 8, 'c');      // create a cactus sprite
+Sprite birb(33, 33, 11, 8, 'b');     // create a birb
 
 class Game {
-    int gSpeed, highScore, jumpHeight, jumpFrame, jumpDirection;  // game variables
-    int dHit[6], bHit[3], cHit[3], fHit[2];                       // Int arrays for hitboxes, because everything is traveling horizontally, we should only need three sides EXCEPT
-                                                                  //   for the dinosuar, which has multiple sides.
-    bool isJumping, isDucking;                                    // state check for dinosuar.
+    int gSpeed, highScore, jumpHeight, jumpFrame, jumpDirection, 
+        enemyCounter, enemyPos, jumpDelay, gDifficulty;                                   // game variables
+    int dHit[6], bHit[3], cHit[3], fHit[2];                                               // Int arrays for hitboxes, because everything is traveling horizontally, we should only need three sides EXCEPT
+                                                                                          //   for the dinosuar, which has multiple sides.
+    bool isJumping, isDucking, enemyOnScreen, gOver;                                             // state check for dinosuar and enemies.
     long score, randDelay, randEnemy;
 
   public:
@@ -355,12 +356,14 @@ class Game {
   private:
     displayAll();             // display all the sprites on the matrix
     displayScore();           // TODO: display the current score on the matrix
-    updateHitboxes();         // TODO: update the position of all hitboxes
+    updateHitboxes();         // update the position of all hitboxes
     setDinoState();           // set the state of the dinosuar
-    moveSprites();            // TODO: test
+    moveSprites();            // moves the sprites to their desired locations
     jump();                   // jump the dinosuar
     duck();                   // duck the dinosuar
     drawFloor();              // draw the game floor
+    increaseSpeed();          // increase the speed of the game
+    spawnEnemies();           // TODO: spawn enemies on the screen.
     gameOver();               // TODO: finish the game
     bool checkCollision();    // TODO: check for any collisions
     reset();                  // TODO: reset the game
@@ -370,19 +373,24 @@ class Game {
 };
 
 Game::Game() {
-  gSpeed = 33;            // set the game speed, how many seconds before a game update
-  score = 0;              // score is 0 when the game starts
-  highScore = 0;          // hi-score is also 0, do not reset or you'll lose your stuff!
+  randomSeed(analogRead(5));
+  gSpeed = 33;            // set the game speed
+  score = 1;              // score is 0 when the game starts
   isJumping = false;
   isDucking = false;
   jumpDirection = false;
   jumpHeight = 0;
+  jumpDelay = 0;
   fHit[0] = 0;            // x pos of floor hitbox
   fHit[1] = 30;           // y pos of floor hitbox
   jumpFrame = -14;
-  randDelay = random(100);
-  randEnemy = random(1);
-
+  randDelay = random(75) + 45;
+  enemyOnScreen = false;
+  gDifficulty = 2;
+  gOver = false;
+  cact.updatePosition(33, 33);
+  birb.updatePosition(33, 33);
+  
 };
 
 Game::checkInputs() {
@@ -417,14 +425,14 @@ Game::updateHitboxes(){
    *  Same with jumping, the bottom of the dinosuar is elevated by one pixel in the jumping animation.
    */
   
-  if (isDucking && !isJumping){                       // If the dinosuar is ducking, we want to change the height of the hitbox.
+  if (isDucking && !isJumping){      // If the dinosuar is ducking, we want to change the height of the hitbox.
     dHit[0] = dino.getTop() + 3;     // Dinosuar ducks by 3 pixels, we add 3 because y moves downwards
   }else{
     dHit[0] = dino.getTop();  
   }
 
   dHit[1] = dino.getRight() - 1;
-  dHit[2] = dHit[0] + 5;    // The bottom of the top half of the dinosuar COULD come into collision with the cactus, so we account for this.
+  dHit[2] = dHit[0] + 5;              // The bottom of the top half of the dinosuar COULD come into collision with the cactus, so we account for this.
   dHit[3] = dHit[1] - 5;
   
   if (isJumping){
@@ -437,6 +445,15 @@ Game::updateHitboxes(){
   
 }
 
+Game::increaseSpeed(){
+  if (gSpeed != 1){
+    gSpeed--;
+  }
+  gDifficulty++;
+  score += gDifficulty;
+  tock = millis() / gSpeed;
+}
+
 bool Game::tick() {
   if (millis() > tock * gSpeed) {
     tock++;
@@ -446,14 +463,24 @@ bool Game::tick() {
 };
 
 Game::gameUpdate() {
-  if (tick()) {
+  if (tick() && gOver == false) {
     setDinoState();
+    spawnEnemies();
     moveSprites();
     updateHitboxes();
     //checkCollision();
     displayAll();
   }
-} ;
+  else{
+    gameOver();  
+  }
+};
+
+Game::gameOver(){
+  highScore = score;
+  delay(3000);
+  
+};
 
 Game::jump() {
   isJumping = true;
@@ -472,14 +499,22 @@ Game::moveSprites(){
   if(isJumping == true){
       // do some magic, should be a smooth jump
       if(jumpDirection == false){
-        jumpHeight = ((jumpFrame*jumpFrame*jumpFrame)/400)+8;
+        jumpHeight = ((jumpFrame*jumpFrame*jumpFrame)/2400)+8;
       }else{
-        jumpHeight = ((jumpFrame*jumpFrame*jumpFrame)/-400)+8;
+        jumpHeight = ((jumpFrame*jumpFrame*jumpFrame)/-2400)+8;
       }
-      jumpFrame++;
+      
 
-      if(jumpHeight >= 8){
-        jumpDirection = true;
+      if(jumpHeight >= 8 && jumpDirection == false){
+        if(jumpDelay < 16){
+          jumpHeight = 8;
+          jumpDelay++;
+        }else{
+          jumpDelay = 0;
+          jumpDirection = true;
+        }
+      }else{
+        jumpFrame++;
       }
 
       // if we've landed change the jump to false, and reset the variables
@@ -487,7 +522,7 @@ Game::moveSprites(){
         isJumping = false;
         jumpHeight = 0;
         jumpDirection = false;
-        jumpFrame = -14;  
+        jumpFrame = -26;  
       }
   }
 
@@ -498,7 +533,42 @@ Game::moveSprites(){
     dino.updatePosition(2, fHit[1] - jumpHeight - dino.getHeight());
   }
 
+  if(enemyOnScreen){
+    enemyPos--;
+    if(randEnemy > 49){
+      birb.updatePosition(enemyPos/3, 10);
+      
+      if(birb.getRight() < 0){
+        enemyOnScreen = false;  
+        randDelay = random(75) + 45;
+        increaseSpeed();
+      }
+      
+    }else{
+      cact.updatePosition(enemyPos/3, 22);
+      
+      if(cact.getRight() < 0){
+        enemyOnScreen = false;  
+        randDelay = random(75) + 45;
+        increaseSpeed();
+      }
+      
+    }
+  }
   
+};
+
+Game::spawnEnemies(){
+  if(!enemyOnScreen){
+    enemyCounter++;
+    
+    if(enemyCounter >= randDelay){
+      randEnemy = random(80);
+      enemyPos = 96;
+      enemyOnScreen = true;  
+    }
+    
+  }  
 };
 
 Game::setDinoState(){
@@ -518,7 +588,9 @@ Game::setDinoState(){
 };
 
 Game::displayScore(){
-  score = millis()/100;
+  matrix.setTextSize(1);
+  matrix.setCursor(1,1);
+  matrix.print(score);
 };
 
 Game::hitboxDisplay(){
@@ -541,6 +613,7 @@ Game::displayAll() {
   birb.spriteDisplay();                         
   dino.spriteDisplay();                         
   cact.spriteDisplay();
+  displayScore();
 
   hitboxDisplay();
                         
@@ -583,6 +656,7 @@ void setup() {
   matrix.begin();
   pinMode(JMP, INPUT);
   pinMode(DCK, INPUT);
+  Serial.begin(9600);
 }
 
 void loop() {
