@@ -345,7 +345,7 @@ class Game {
         enemyCounter, enemyPos, jumpDelay, gDifficulty;                                   // game variables
     int dHit[6], bHit[3], cHit[3], fHit[2];                                               // Int arrays for hitboxes, because everything is traveling horizontally, we should only need three sides EXCEPT
                                                                                           //   for the dinosuar, which has multiple sides.
-    bool isJumping, isDucking, enemyOnScreen, gOver;                                             // state check for dinosuar and enemies.
+    bool isJumping, isDucking, enemyOnScreen, gOver, displayingScore;                     // state check for dinosuar and enemies.
     long score, randDelay, randEnemy;
 
   public:
@@ -365,7 +365,7 @@ class Game {
     increaseSpeed();          // increase the speed of the game
     spawnEnemies();           // TODO: spawn enemies on the screen.
     gameOver();               // TODO: finish the game
-    bool checkCollision();    // TODO: check for any collisions
+    checkCollision();         // TODO: check for any collisions
     reset();                  // TODO: reset the game
     bool tick();              // virtual timing for the game
     hitboxDisplay();          // Displays hitboxes for testing purposes.
@@ -383,15 +383,37 @@ Game::Game() {
   jumpDelay = 0;
   fHit[0] = 0;            // x pos of floor hitbox
   fHit[1] = 30;           // y pos of floor hitbox
-  jumpFrame = -14;
+  jumpFrame = -26;
   randDelay = random(75) + 45;
   enemyOnScreen = false;
   gDifficulty = 2;
   gOver = false;
+  displayingScore = false;
   cact.updatePosition(33, 33);
   birb.updatePosition(33, 33);
   
 };
+
+Game::reset(){
+  randomSeed(analogRead(5));
+  gSpeed = 33;            // set the game speed
+  score = 1;              // score is 0 when the game starts
+  isJumping = false;
+  isDucking = false;
+  jumpDirection = false;
+  jumpHeight = 0;
+  jumpDelay = 0;
+  fHit[0] = 0;            // x pos of floor hitbox
+  fHit[1] = 30;           // y pos of floor hitbox
+  jumpFrame = -26;
+  randDelay = random(75) + 45;
+  enemyOnScreen = false;
+  gDifficulty = 2;
+  gOver = false;
+  displayingScore = false;
+  cact.updatePosition(33, 33);
+  birb.updatePosition(33, 33);  
+  }
 
 Game::checkInputs() {
   // if the dinosuar is jumping, do nothing.
@@ -412,7 +434,7 @@ Game::updateHitboxes(){
   // The player will only be able to interact with the left and bottom of the birb
   bHit[0] = birb.getRight() - 3;
   bHit[1] = birb.getBottom() - 3;
-  bHit[2] = birb.getLeft();
+  bHit[2] = birb.getLeft() + 4;
 
   // The player will only be able to interact with the left and top of the cactus
   cHit[0] = cact.getTop();
@@ -468,18 +490,40 @@ Game::gameUpdate() {
     spawnEnemies();
     moveSprites();
     updateHitboxes();
-    //checkCollision();
     displayAll();
+    checkCollision();
   }
-  else{
+  else if (tick() && gOver == true){
     gameOver();  
   }
 };
 
+Game::checkCollision(){
+  if(dHit[3] >= cHit[2] && dHit[4] >= cHit[0] && dHit[5] <= cHit[1]){
+    delay(3000);
+    gOver = true;
+    }  
+  if(dHit[1] >= bHit[2] && dHit[0] <= bHit[1] && dHit[3] <= bHit[0]){
+    delay(3000);
+    gOver = true;
+    }
+}
+
 Game::gameOver(){
-  highScore = score;
-  delay(3000);
-  
+  if(score > highScore){highScore = score;}
+  if(!displayingScore){
+    matrix.setCursor(1,1);
+    matrix.fillScreen(matrix.Color333(0, 0, 0));
+    matrix.print("SCORE\n");
+    matrix.print(score);
+    matrix.print("\nHIGH\n");
+    matrix.print(highScore);
+    matrix.swapBuffers(false);
+    displayingScore = true;
+  }
+  if(isDucking){
+    reset();
+  }
 };
 
 Game::jump() {
@@ -588,7 +632,7 @@ Game::setDinoState(){
 };
 
 Game::displayScore(){
-  matrix.setTextSize(1);
+  matrix.setTextSize(0.5);
   matrix.setCursor(1,1);
   matrix.print(score);
 };
@@ -613,10 +657,7 @@ Game::displayAll() {
   birb.spriteDisplay();                         
   dino.spriteDisplay();                         
   cact.spriteDisplay();
-  displayScore();
-
-  hitboxDisplay();
-                        
+  displayScore();                     
   drawFloor();                                  
   matrix.swapBuffers(false);                    // swap the buffers over for that smooth, smooth animation
 };
@@ -656,7 +697,6 @@ void setup() {
   matrix.begin();
   pinMode(JMP, INPUT);
   pinMode(DCK, INPUT);
-  Serial.begin(9600);
 }
 
 void loop() {
