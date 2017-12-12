@@ -341,11 +341,11 @@ Sprite cact(33, 33, 5, 8, 'c');      // create a cactus sprite
 Sprite birb(33, 33, 11, 8, 'b');     // create a birb
 
 class Game {
-    int gSpeed, highScore, jumpHeight, jumpFrame, jumpDirection, 
+    int gSpeed, highScore, jumpHeight, jumpFrame, 
         enemyCounter, enemyPos, jumpDelay, gDifficulty;                                   // game variables
     int dHit[6], bHit[3], cHit[3], fHit[2];                                               // Int arrays for hitboxes, because everything is traveling horizontally, we should only need three sides EXCEPT
                                                                                           //   for the dinosuar, which has multiple sides.
-    bool isJumping, isDucking, enemyOnScreen, gOver, displayingScore;                     // state check for dinosuar and enemies.
+    bool isJumping, isDucking, enemyOnScreen, gOver, displayingScore, jumpDirection;      // state check for dinosuar and enemies.
     long score, randDelay, randEnemy;
 
   public:
@@ -373,25 +373,7 @@ class Game {
 };
 
 Game::Game() {
-  randomSeed(analogRead(5));
-  gSpeed = 33;            // set the game speed
-  score = 1;              // score is 0 when the game starts
-  isJumping = false;
-  isDucking = false;
-  jumpDirection = false;
-  jumpHeight = 0;
-  jumpDelay = 0;
-  fHit[0] = 0;            // x pos of floor hitbox
-  fHit[1] = 30;           // y pos of floor hitbox
-  jumpFrame = -26;
-  randDelay = random(75) + 45;
-  enemyOnScreen = false;
-  gDifficulty = 2;
-  gOver = false;
-  displayingScore = false;
-  cact.updatePosition(33, 33);
-  birb.updatePosition(33, 33);
-  
+  reset();
 };
 
 Game::reset(){
@@ -473,7 +455,7 @@ Game::increaseSpeed(){
   }
   gDifficulty++;
   score += gDifficulty;
-  tock = millis() / gSpeed;
+  tock = (millis() / gSpeed) + 1;
 }
 
 bool Game::tick() {
@@ -541,7 +523,7 @@ Game::drawFloor(){
 Game::moveSprites(){
   // check if we're jumping
   if(isJumping == true){
-      // do some magic, should be a smooth jump
+      // do some magic, should be a smooth jump on a curve with some air time
       if(jumpDirection == false){
         jumpHeight = ((jumpFrame*jumpFrame*jumpFrame)/2400)+8;
       }else{
@@ -585,7 +567,6 @@ Game::moveSprites(){
       if(birb.getRight() < 0){
         enemyOnScreen = false;  
         randDelay = random(75) + 45;
-        increaseSpeed();
       }
       
     }else{
@@ -594,7 +575,6 @@ Game::moveSprites(){
       if(cact.getRight() < 0){
         enemyOnScreen = false;  
         randDelay = random(75) + 45;
-        increaseSpeed();
       }
       
     }
@@ -608,6 +588,7 @@ Game::spawnEnemies(){
     
     if(enemyCounter >= randDelay){
       randEnemy = random(80);
+      increaseSpeed();
       enemyPos = 96;
       enemyOnScreen = true;  
     }
@@ -617,7 +598,6 @@ Game::spawnEnemies(){
 
 Game::setDinoState(){
   // switch states depending on the players state and the current sprite state
-  char state = dino.getState();
   if (isJumping == true && dino.getState() != 'c') {
     dino.setState('c');
   }
